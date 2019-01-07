@@ -1,6 +1,8 @@
 # frame-predict
 Predicting image frames using LSTM + CNN with pytorch
 
+Dataset is sequence of falling dot
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/Figure_1.png)
 
 Given n frames to the network, the desired output is next sequence of possible frames.
 Network consists of few convolution layers to get image features that are later passed to LSTM or RNN layer.
