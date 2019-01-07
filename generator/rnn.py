@@ -33,8 +33,35 @@ for dir in os.listdir(path):
         for f in os.listdir(path + dir):
             if os.path.isfile(path + dir + '/' + f):
                 d.append(path + dir + '/' + f)
-        images.append(d)
+        images.append(sorted(d))
 
-
+# fig=plt.figure(figsize=(8, 8))
+# for i in range(0, len(images[0])):
+#     l = sorted(images[0])
+#     img = plt.imread(l[i])
+#     fig.add_subplot(1, len(images[0]), i+1)
+#     plt.imshow(img)
+# plt.show()
 
 data = Dataset(images)
+
+
+class Model(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.layers = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+    def forward(self, input):
+        return self.layers.forward(input)
+
+
+model = Model()
+print(model)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+

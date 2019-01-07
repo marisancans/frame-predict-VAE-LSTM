@@ -5,8 +5,8 @@ import time
 import os
 
 height, width = 32, 32
-img = np.zeros((height, width, 3), np.uint8)
-img[:, :] = [255, 255, 255]
+img = np.zeros((height, width, 1), np.uint8)
+img[:, :] = [0]
 
 
 for d in range(1000):
@@ -22,7 +22,7 @@ for d in range(1000):
     while True:
         t += 1
         img_out = img.copy()
-        cv2.circle(img_out, (int(x), int(abs(y))+r+offset), r, (0, 0, 255), -1)
+        cv2.circle(img_out, (int(x), int(abs(y))+r+offset), r, (255), -1)
         x = vx * t
         y = vy * t - 1 / 2 * g * t ** 2
 
