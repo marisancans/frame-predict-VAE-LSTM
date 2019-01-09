@@ -1,67 +1,78 @@
-import numpy as np
 import torch
+import numpy as np
 import torch.utils.data
 import torch.nn.functional as F
-import os
+import os, io, cv2
 
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+from net import Net
+from dataset import Dataset
 
-
-class Dataset(torch.utils.data.dataset.Dataset):
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def __len__(self):
-        return len(self.data)
+#   Settings
+img_path = '/home/maris/rnn/'
 
 
+#   Load all image paths
+data = []
+
+for directory in os.listdir(img_path):
+    if os.path.isdir(img_path + directory):
+        x = []
+
+        # Sort via filenames, because python appends unordered and it will cause LSTM network confusion
+        files = sorted(os.listdir(img_path + directory))
+
+        is_file = lambda name : os.path.isfile(name)
+        prefix = lambda path : img_path + directory + '/' + path
+
+        # X is sequence of frames, except for the last one
+        for f in files:
+            if is_file(prefix(f)):
+                x.append(prefix(f))
+
+        data.append(x)
 
 
-images = []
-# for root, dirs, files in os.walk("'/home/maris/rnn/'"):
-#     [images.append(f) for f in files if os.path.isfile(f) not in False]
-path = '/home/maris/rnn/'
-for dir in os.listdir(path):
-    if os.path.isdir(path + dir):
-        d = []
-        for f in os.listdir(path + dir):
-            if os.path.isfile(path + dir + '/' + f):
-                d.append(path + dir + '/' + f)
-        images.append(sorted(d))
-
-# fig=plt.figure(figsize=(8, 8))
-# for i in range(0, len(images[0])):
-#     l = sorted(images[0])
-#     img = plt.imread(l[i])
-#     fig.add_subplot(1, len(images[0]), i+1)
-#     plt.imshow(img)
-# plt.show()
-
-data = Dataset(images)
+data = Dataset(data)
 
 
-class Model(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
+dataset_train = Dataset(data=data[0:int(len(data) * 0.8)])
+dataset_test = Dataset(data=data[int(len(data) * 0.8):])
 
-        self.layers = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+batch_size = 16
+max_epochs = 10
 
-    def forward(self, input):
-        return self.layers.forward(input)
+data_loder_train = torch.utils.data.DataLoader(
+    dataset_train,
+    batch_size=batch_size,
+    shuffle=True
+)
+
+data_loder_test = torch.utils.data.DataLoader(
+    dataset_test,
+    batch_size=batch_size,
+    shuffle=False
+)
 
 
-model = Model()
+model = Net()
 print(model)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
 
+losses_train = []
+
+
+for epoch in range(max_epochs):
+    for data_loader in data_loder_train:
+        losses_tmp = []
+
+        for idx, batch in enumerate(data_loader[:-1]):
+            x_paths = batch
+            y_paths = data_loader[idx + 1]
+            X = [cv2.imread(i, 0) for i in x_paths] #  Mode 1 is grayscale
+            Y = [cv2.imread(i, 0) for i in y_paths]
+            X = torch.tensor(X)
+
+            #TODO implement batching here, X is (batchsize, width, height)
+
+            y_prim = model.forward(X)
