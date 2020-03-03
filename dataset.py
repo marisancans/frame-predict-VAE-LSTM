@@ -25,7 +25,7 @@ class CustomDataset(Dataset):
 
             while True:
                 t += 1
-                img = np.zeros((height, width, 3), np.float32)
+                img = np.zeros((height, width, 1), np.float32)
                 img.fill(1)
                 img = cv2.circle(img, (int(x), int(abs(y)) + args.r + offset), args.r, (0), -1)
                                
@@ -50,10 +50,7 @@ class CustomDataset(Dataset):
         imgs = torch.FloatTensor(imgs)
         imgs = imgs.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
 
-        last_frame = torch.FloatTensor(last_frame)
-        last_frame = last_frame.permute(2, 0, 1) # (H, W, C) -->  (C, H, W)
-
-        return { 'imgs': imgs, 'last_frame': last_frame }
+        return imgs
 
     def __len__(self):
         return len(self.index)

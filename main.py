@@ -7,7 +7,7 @@ from os import getpid
 import argparse
 
 from dataset import CustomDataset
-from models import Encoder, Decoder, LSTMModel
+from models import ModifiedUNet
 
 
 def arg_to_bool(x): return str(x).lower() == 'true'
@@ -17,13 +17,15 @@ parser.add_argument('-device', default='cpu')
 parser.add_argument('-z_size', default=16, help='Size of embedding for decoder', type=int)
 
 parser.add_argument('-lr', default=0.001, type=float, help='Learning rate')
-parser.add_argument('-batch_size', default=32, type=int)
+parser.add_argument('-batch_size', default=64, type=int)
+parser.add_argument('-accumulator_size', default=10, type=int, help='How many items can be held at max in sequence container')
+parser.add_argument('-sequence_window', default=3, type=int, help='Sequence length, this is a used as a sliding window')
 parser.add_argument('-epoch', default=1000, type=int)
 
 parser.add_argument('-dataset_size', default=100, type=int, help='How many sequences are generated, higher number increases RAM')
 parser.add_argument('-num_workers', default=0, type=int, help='How many parralel workers on dataloader')
 parser.add_argument('-beta', default=1.0, type=float, help='Beta hyperparameter in beta VAE')
-parser.add_argument('-image_size', choices=[3, 7, 15, 31, 63, 127, 255, 511], default=63, type=int, help='Generated image size')
+parser.add_argument('-image_size', choices=[64], default=64, type=int, help='Generated image size')
 parser.add_argument('-lstm_layers', type=int, help='How many layers in LSTM', default=1)
 
 parser.add_argument('-vx', type=float, default=4, help='Velocity along x-axis')
@@ -56,13 +58,10 @@ def load(path):
 # collate_fn overloads th default behaviour of pytorch batch stacking
 def collate_fn(batch):
     idxs = []
-    last_frames = []
     idx_from = 0
     imgs_batch = []
 
-    for s in batch:
-        imgs = s['imgs']
-        last_frames.append(s['last_frame'])
+    for imgs in batch:
         imgs_batch.append(imgs)
 
         idx_to = idx_from + imgs.shape[0]
@@ -71,23 +70,20 @@ def collate_fn(batch):
     
     # 2D sequences to 1D array
     batch_1D = torch.cat(imgs_batch)
-    last_frames_t = torch.stack(last_frames)
 
-    return batch_1D, last_frames_t, idxs
+    return batch_1D, idxs
 
 
 print('Using device:', args.device)
 
-encoder = Encoder(args).to(args.device)
-decoder = Decoder(args).to(args.device)
-lstm = LSTMModel(input_size=args.z_size, hidden_size=args.z_size, num_layers=args.lstm_layers, args=args).to(args.device)
+model = ModifiedUNet(args, in_channels=1, out_channels=1, bottleneck_out=None, init_features=32).to(args.device)
+
 
 now = datetime.datetime.now()
 dir_name = now.strftime("%B_%d_at_%H_%M_%p")
 save_dir = './save/' + dir_name
 
-params = list(encoder.parameters()) + list(decoder.parameters())
-optimizer = torch.optim.Adam(params, args.lr)
+optimizer = torch.optim.Adam(model.parameters(), args.lr)
 reconstruction_loss_fn = torch.nn.BCELoss()
 
 dataset = CustomDataset(args)
@@ -97,26 +93,12 @@ for epoch in range(1, args.epoch):
     epoch_loss_rec = []
     epoch_loss_kl = []
 
-    for batch_t, last_frames_t, idxs in dataset_loader:
-        batch_t = batch_t.to(args.device)
-        last_frames_t = last_frames_t.to(args.device)
+    for batch, idxs in dataset_loader:
+        batch = batch.to(args.device)
         
-        z_vector, z_mu, z_sigma = encoder.forward(batch_t)
+        preds = model.forward(batch, idxs)
 
-        # 1D to 2D sequences
-        z_sequences = [z_vector[i['idx_from'] : i['idx_to']] for i in idxs]
-
-        # run through LSTM, use packing
-        padded_seq = nn.utils.rnn.pad_sequence(z_sequences, batch_first=True)
-        lengths = [x.size(0) for x in z_sequences]
-        pack = nn.utils.rnn.pack_padded_sequence(padded_seq, lengths, batch_first=True, enforce_sorted=False)
-
-        lstm_out = lstm.forward(pack, bs=len(z_sequences))
-        unpacked, unpacked_len = nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
-
-        # take last LSTM output
-        lstm_last = [seq[idx] for seq, idx in zip(unpacked, unpacked_len-1)]
-        lstm_last_stacked = torch.stack(lstm_last)
+        
 
         decoded = decoder.forward(lstm_last_stacked)
 
