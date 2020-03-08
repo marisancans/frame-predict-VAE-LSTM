@@ -5,24 +5,32 @@ import torch.nn as nn
 from collections import OrderedDict
 
 # https://www.deeplearningwizard.com/deep_learning/practical_pytorch/pytorch_lstm_neuralnetwork/
-class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, args):
-        super(LSTMModel, self).__init__()
+class ManyToManyLSTMM(nn.Module):
+    def __init__(self, input_size, hidden_size, args):
+        super(ManyToManyLSTMM, self).__init__()
 
+        self.cell = nn.LSTMCell(input_size, hidden_size)
         self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.args = args
 
-    def forward(self, x, bs):
-        # Initialize hidden state with zeros
-        h0 = torch.zeros(self.num_layers, bs, self.hidden_size).to(self.args.device)
+    def forward(self, x):
+        S, B, z = x.shape
 
         # Initialize cell state
-        c0 = torch.zeros(self.num_layers, bs, self.hidden_size).to(self.args.device)
-        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
+        hx = torch.randn(B, self.hidden_size)
+        cx = torch.randn(B, self.hidden_size)
 
-        return out
+        # Run through first n known frames
+        for i in range(S):
+            hx, cx = self.cell(x[i], (hx, cx))
+
+        # Try to predict n frames
+        output = []
+        for i in range(2):
+            hx, cx = self.cell(hx, (hx, cx))
+            output.append(hx)
+
+        return output
 
 # https://github.com/mateuszbuda/brain-segmentation-pytorch
 class ModifiedUNet(nn.Module):
@@ -58,7 +66,7 @@ class ModifiedUNet(nn.Module):
         self.sigma = torch.nn.Linear(in_features=self.bottleneck_out, out_features=self.args.z_size)
 
         # LSTM
-        lstm = LSTMModel(input_size=args.z_size, hidden_size=args.z_size, num_layers=args.lstm_layers, args=args).to(args.device)
+        self.lstm = ManyToManyLSTMM(input_size=args.z_size, hidden_size=args.z_size, args=args).to(args.device)
 
         # decoder
         self.upconv4 = nn.ConvTranspose2d(
@@ -82,6 +90,14 @@ class ModifiedUNet(nn.Module):
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
 
+    def lstm_predict(self, z_sequences):
+        lstm_out = self.lstm.forward(z_sequences)
+
+        # take 
+        lstm_last = [seq[idx] for seq, idx in zip(unpacked, unpacked_len-1)]
+        lstm_last_stacked = torch.stack(lstm_last)
+        x=0
+
     def forward(self, x, idxs):
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
@@ -102,23 +118,13 @@ class ModifiedUNet(nn.Module):
         
         z_vector = z_mu + z_sigma * eps # z ~ Q(z|X)
 
-        # LSTM + packing
-
-        # accumulator_size
-        # sequence_window
+        # 1D to 2D
         z_sequences = [z_vector[i['idx_from'] : i['idx_to']] for i in idxs]
-
-        # run through LSTM, use packing
-        padded_seq = nn.utils.rnn.pad_sequence(z_sequences, batch_first=True)
-        lengths = [x.size(0) for x in z_sequences]
-        pack = nn.utils.rnn.pack_padded_sequence(padded_seq, lengths, batch_first=True, enforce_sorted=False)
-
-        lstm_out = lstm.forward(pack, bs=len(z_sequences))
-        unpacked, unpacked_len = nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
-
-        # take last LSTM output
-        lstm_last = [seq[idx] for seq, idx in zip(unpacked, unpacked_len-1)]
-        lstm_last_stacked = torch.stack(lstm_last)
+        z_sequences = torch.stack(z_sequences)
+        z_sequences = z_sequences.permute(1, 0, 2) # (B, Seq_len, z_vector) --> (Seq_len, B, z_vector)
+ 
+        # get next N frames from LSTM
+        next_pred = self.lstm_predict(z_sequences)
 
         
 

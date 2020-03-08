@@ -44,13 +44,16 @@ class CustomDataset(Dataset):
         
     def __getitem__(self, idx):
         i = self.index[idx]
-        imgs = self.data[i["idx_from"] : i["idx_to"] - 1]
-        last_frame = self.data[i["idx_to"] - 1]
+        imgs = self.data[i["idx_from"] : i["idx_from"] + self.args.sequence_window]
+        imgs_truths = self.data[i["idx_from"] + self.args.sequence_window : i["idx_to"]] 
         
         imgs = torch.FloatTensor(imgs)
         imgs = imgs.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
 
-        return imgs
+        imgs_truths = torch.FloatTensor(imgs_truths)
+        imgs_truths = imgs_truths.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
+
+        return {'imgs': imgs, 'imgs_truths': imgs_truths }
 
     def __len__(self):
         return len(self.index)
