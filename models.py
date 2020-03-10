@@ -4,33 +4,27 @@ import torchvision.models as models
 import torch.nn as nn
 from collections import OrderedDict
 
-# https://www.deeplearningwizard.com/deep_learning/practical_pytorch/pytorch_lstm_neuralnetwork/
-class ManyToManyLSTMM(nn.Module):
-    def __init__(self, input_size, hidden_size, args):
-        super(ManyToManyLSTMM, self).__init__()
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, device='cpu', num_layers=1):
+        super(LSTMModel, self).__init__()
 
-        self.cell = nn.LSTMCell(input_size, hidden_size)
         self.hidden_size = hidden_size
-        self.args = args
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=False)
+        self.device = device
 
     def forward(self, x):
+        # Initialize hidden state with zeros
         S, B, z = x.shape
 
+        h0 = torch.zeros(self.num_layers, B, self.hidden_size).to(self.device)
+        
+
         # Initialize cell state
-        hx = torch.randn(B, self.hidden_size)
-        cx = torch.randn(B, self.hidden_size)
+        c0 = torch.zeros(self.num_layers, B, self.hidden_size).to(self.device)
+        all_timesteps, hidden_last_timestep = self.lstm(x, (h0, c0))
 
-        # Run through first n known frames
-        for i in range(S):
-            hx, cx = self.cell(x[i], (hx, cx))
-
-        # Try to predict n frames
-        output = []
-        for i in range(2):
-            hx, cx = self.cell(hx, (hx, cx))
-            output.append(hx)
-
-        return output
+        return hidden_last_timestep
 
 # https://github.com/mateuszbuda/brain-segmentation-pytorch
 class ModifiedUNet(nn.Module):
@@ -66,7 +60,7 @@ class ModifiedUNet(nn.Module):
         self.sigma = torch.nn.Linear(in_features=self.bottleneck_out, out_features=self.args.z_size)
 
         # LSTM
-        self.lstm = ManyToManyLSTMM(input_size=args.z_size, hidden_size=args.z_size, args=args).to(args.device)
+        self.lstm = LSTMModel(input_size=args.z_size, hidden_size=args.z_size, device=args.device).to(args.device)
 
         # decoder
         self.upconv4 = nn.ConvTranspose2d(
