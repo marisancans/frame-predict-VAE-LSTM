@@ -3,6 +3,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 import random as random
 import numpy as np
+import matplotlib.pyplot as plt
 
 class CustomDataset(Dataset):
     def __init__(self, args):
@@ -40,6 +41,16 @@ class CustomDataset(Dataset):
 
             seq_idx["idx_to"] = len(self.data)
             self.index.append(seq_idx)
+        # self.plot()
+    
+    def plot(self):
+        i = self.index[0]
+        d = self.data[i['idx_from']: i['idx_to']]
+        f, axarr = plt.subplots(1, len(d))
+
+        for plot, img in enumerate(d):
+            axarr[plot].imshow(np.squeeze(img, -1), cmap='gray')
+        plt.show()
 
         
     def __getitem__(self, idx):

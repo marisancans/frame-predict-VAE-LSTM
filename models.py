@@ -91,6 +91,8 @@ class ModifiedUNet(nn.Module):
         self.lstm_encoder = LSTMEncoder(input_size=args.z_size, hidden_size=args.z_size, device=args.device).to(args.device)
         self.lstm_decoder = LSTMDecoder(input_size=args.z_size, hidden_size=args.z_size, device=args.device).to(args.device)  
 
+        self.linear = nn.Linear(args.z_size, args.z_size)
+
         # decoder
         
         # calculate what shape should be before upconv4
@@ -189,6 +191,9 @@ class ModifiedUNet(nn.Module):
             picked_preds.append(preds[batch_idx][0:to_step])
 
         masked_catted = torch.cat(picked_preds, dim=0)           
+        
+        masked_catted = self.linear(masked_catted)
+        masked_catted = F.relu(masked_catted)
 
         # add H and W dims
         masked_catted = masked_catted.unsqueeze(-1).unsqueeze(-1)
@@ -223,7 +228,7 @@ class ModifiedUNet(nn.Module):
         dec1 = F.relu(dec1)
 
         out = self.conv(dec1)
-        out = torch.sigmoid(out)
+        # out = torch.sigmoid(out)
         return out, z_mu, z_sigma
 
 
