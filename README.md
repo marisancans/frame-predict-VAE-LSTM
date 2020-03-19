@@ -18,7 +18,7 @@ split them apart and pick only the ones I need after using packed LSTM sequences
 
 # Results:
 How to interpret the results: 
-![alt text](results/Figure_3.png)
+![alt text](results/interpret.png)
 
 ## Vanilla autoencoder
 - Batch size 32
