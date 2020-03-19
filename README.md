@@ -2,12 +2,14 @@
 This project idea is to try predict next n frames, by seeing only first few frames (3 in example)
 I took UNet and removed skip connections, I used this architecture only to create encoder and decoder model.
 
-Between encoder and decoder I am using LSTM which acts as an time encoder. 
-Time encoder goal is to encoder information about the frames it has seen so it can predict them later. 
+Between encoder and decoder I am using LSTM which acts as a time encoder. 
+Time encoder goal is to encoder information about the frames it has seen (like acceleration, position) so it can predict them later. 
 LSTM's here are used simialr to seq2seq models.
 
 Because sequence lenghts are variational, they are all stacked in a batch, im using indicies to later
 split them apart and pick only the ones I need after using packed LSTM sequences to calculate loss.
+
+Dataset is quite simple, so I wouldn't be suprised if it overfits
 
 
 ## Dataset is sequence of falling dot
