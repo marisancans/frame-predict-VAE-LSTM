@@ -11,39 +11,39 @@ split them apart and pick only the ones I need after using packed LSTM sequences
 
 
 ## Dataset is sequence of falling dot
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_1.png)
+![alt text](results/Figure_1.png)
 
 ## Architecure design
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_2.png)
+![alt text](results/Figure_2.png)
 
 # Results:
 How to interpret the results: 
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_3.png)
+![alt text](results/Figure_3.png)
 
 ## Vanilla autoencoder
 - Batch size 32
 - lr 0.001
 - z_vector size 16
 - beta 1
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vanilla.gif)
+![alt text](results/vanilla.gif)
 
 ## Vanilla autoencoder z_vector size 2
 - Batch size 32
 - lr 0.001
 - z_vector size 2
 - beta 1
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vanilla_zsize_2.gif)
+![alt text](results/vanilla_zsize_2.gif)
 
 ## VAE autoencoder
 - Batch size 32
 - lr 0.001
 - z_vector size 16
 - beta 1
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vae.gif)
+![alt text](results/vae.gif)
 
 ## Beta VAE autoencoder
 - Batch size 32
 - lr 0.001
 - z_vector size 3
 - beta 150
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vae_beta.gif)
+![alt text](results/vae_beta.gif)
