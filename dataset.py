@@ -3,6 +3,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 import random as random
 import numpy as np
+import matplotlib.pyplot as plt
 
 class CustomDataset(Dataset):
     def __init__(self, args):
@@ -25,7 +26,7 @@ class CustomDataset(Dataset):
 
             while True:
                 t += 1
-                img = np.zeros((height, width, 3), np.float32)
+                img = np.zeros((height, width, 1), np.float32)
                 img.fill(1)
                 img = cv2.circle(img, (int(x), int(abs(y)) + args.r + offset), args.r, (0), -1)
                                
@@ -40,20 +41,30 @@ class CustomDataset(Dataset):
 
             seq_idx["idx_to"] = len(self.data)
             self.index.append(seq_idx)
+        # self.plot()
+    
+    def plot(self):
+        i = self.index[0]
+        d = self.data[i['idx_from']: i['idx_to']]
+        f, axarr = plt.subplots(1, len(d))
+
+        for plot, img in enumerate(d):
+            axarr[plot].imshow(np.squeeze(img, -1), cmap='gray')
+        plt.show()
 
         
     def __getitem__(self, idx):
         i = self.index[idx]
-        imgs = self.data[i["idx_from"] : i["idx_to"] - 1]
-        last_frame = self.data[i["idx_to"] - 1]
+        imgs = self.data[i["idx_from"] : i["idx_from"] + self.args.sequence_window]
+        imgs_truths = self.data[i["idx_from"] + self.args.sequence_window : i["idx_to"]] 
         
         imgs = torch.FloatTensor(imgs)
         imgs = imgs.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
 
-        last_frame = torch.FloatTensor(last_frame)
-        last_frame = last_frame.permute(2, 0, 1) # (H, W, C) -->  (C, H, W)
+        imgs_truths = torch.FloatTensor(imgs_truths)
+        imgs_truths = imgs_truths.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
 
-        return { 'imgs': imgs, 'last_frame': last_frame }
+        return {'imgs': imgs, 'imgs_truths': imgs_truths }
 
     def __len__(self):
         return len(self.index)
