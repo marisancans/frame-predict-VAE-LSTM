@@ -32,7 +32,7 @@ How to interpret the results:
 - lr 0.001
 - z_vector size 2
 - beta 1
-![alt text](results/vanilla_zsize_2.gif)
+![alt text](results/vanilla_zsize2.gif)
 
 ## VAE autoencoder
 - Batch size 32
