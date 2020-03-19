@@ -1,14 +1,49 @@
 # frame-predict
-Predicting image frames using LSTM + CNN with pytorch
+This project idea is to try predict next n frames, by seeing only first few frames (3 in example)
+I took UNet and removed skip connections, I used this architecture only to create encoder and decoder model.
 
-Dataset is sequence of falling dot
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/Figure_1.png)
+Between encoder and decoder I am using LSTM which acts as an time encoder. 
+Time encoder goal is to encoder information about the frames it has seen so it can predict them later. 
+LSTM's here are used simialr to seq2seq models.
 
-Given sequence of frames, the desired output is the next frame.
-Network consists of few convolution layers to get image features that are later passed to LSTM or RNN layer.
-Loss function is pixel subtraction between actual and predicted image.
+Because sequence lenghts are variational, they are all stacked in a batch, im using indicies to later
+split them apart and pick only the ones I need after using packed LSTM sequences to calculate loss.
 
-![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/graph.png)
-Taken from: 
-Deep Predictive Coding Networks for Video Prediction and Unsupervised Learning
-[https://arxiv.org/abs/1605.08104]
+
+## Dataset is sequence of falling dot
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_1.png)
+
+## Architecure design
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_2.png)
+
+# Results:
+How to interpret the results: 
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/Figure_3.png)
+
+## Vanilla autoencoder
+- Batch size 32
+- lr 0.001
+- z_vector size 16
+- beta 1
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vanilla.gif)
+
+## Vanilla autoencoder z_vector size 2
+- Batch size 32
+- lr 0.001
+- z_vector size 2
+- beta 1
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vanilla_zsize_2.gif)
+
+## VAE autoencoder
+- Batch size 32
+- lr 0.001
+- z_vector size 16
+- beta 1
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vae.gif)
+
+## Beta VAE autoencoder
+- Batch size 32
+- lr 0.001
+- z_vector size 3
+- beta 150
+![alt text](https://raw.githubusercontent.com/marisancans/frame-predict/master/results/vae_beta.gif)

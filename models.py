@@ -91,7 +91,6 @@ class ModifiedUNet(nn.Module):
         self.lstm_encoder = LSTMEncoder(input_size=args.z_size, hidden_size=args.z_size, device=args.device).to(args.device)
         self.lstm_decoder = LSTMDecoder(input_size=args.z_size, hidden_size=args.z_size, device=args.device).to(args.device)  
 
-        self.linear = nn.Linear(args.z_size, args.z_size)
 
         # decoder
         
@@ -192,9 +191,6 @@ class ModifiedUNet(nn.Module):
 
         masked_catted = torch.cat(picked_preds, dim=0)           
         
-        masked_catted = self.linear(masked_catted)
-        masked_catted = F.relu(masked_catted)
-
         # add H and W dims
         masked_catted = masked_catted.unsqueeze(-1).unsqueeze(-1)
 
