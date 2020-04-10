@@ -43,13 +43,11 @@ class LSTMDecoder(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=False)
         self.device = device
 
-    def forward(self, sizes, steps, hidden):
+    def forward(self, sizes, hidden):
         S, B, z = sizes
-        input = torch.zeros([max(steps), B, z], dtype=torch.float).to(self.device)
-        preds, hidden = self.lstm(input, hidden)
-
-        preds = preds.permute(1, 0, 2) # (Seq_len, B, z) --> (B, Seq_len, z)
-        return preds
+        input = torch.zeros([S, B, z], dtype=torch.float).to(self.device)
+        all_timesteps, hidden_last_timestep = self.lstm(input, hidden)
+        return all_timesteps
 
 # https://github.com/mateuszbuda/brain-segmentation-pytorch
 class ModifiedUNet(nn.Module):
@@ -139,7 +137,7 @@ class ModifiedUNet(nn.Module):
 
 
 
-    def forward(self, x, idxs, steps):
+    def forward(self, x):
         enc1 = self.encoder1(x)
         enc1 = self.bn_enc1(enc1)
         enc1 = F.relu(enc1)
@@ -174,7 +172,12 @@ class ModifiedUNet(nn.Module):
         z_vector = z_mu + z_sigma * eps # z ~ Q(z|X)
 
         # 1D to 2D
-        z_sequences = [z_vector[i['idx_from'] : i['idx_to']] for i in idxs]
+        z_sequences = []
+
+        for i in range(len(z_vector) - self.args.sequence_window):
+            s = z_vector[i:i + self.args.sequence_window]
+            z_sequences.append(s)
+
         z_sequences = torch.stack(z_sequences)
         z_sequences = z_sequences.permute(1, 0, 2) # (B, Seq_len, z_vector) --> (Seq_len, B, z_vector)
  
@@ -182,19 +185,15 @@ class ModifiedUNet(nn.Module):
         hidden_last_timestep = self.lstm_encoder.forward(z_sequences)
 
         # decode and predict time 
-        preds = self.lstm_decoder.forward(z_sequences.shape, steps, hidden_last_timestep)
-        
-        # pick predictions that we need
-        picked_preds = []
-        for batch_idx, to_step in enumerate(steps):
-            picked_preds.append(preds[batch_idx][0:to_step])
+        all_timesteps = self.lstm_decoder.forward(z_sequences.shape, hidden_last_timestep) 
 
-        masked_catted = torch.cat(picked_preds, dim=0)           
+        # pick last rnn step
+        hidden_last = all_timesteps[-1:, :, :].squeeze(0)                 
         
         # add H and W dims
-        masked_catted = masked_catted.unsqueeze(-1).unsqueeze(-1)
+        hidden_last = hidden_last.unsqueeze(-1).unsqueeze(-1)
 
-        expand = self.upconv6(masked_catted)
+        expand = self.upconv6(hidden_last)
         expand = self.decoder6(expand)
         expand = self.bn_dec6(expand)
         expand = F.relu(expand)
